@@ -1,0 +1,6 @@
+{
+  "name": "المصادق الآمن",
+  "description": "تطبيق مصادقة ثنائية آمن (2FA Authenticator) مع تشفير تام لحماية رموز ومفاتيح الحسابات.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
