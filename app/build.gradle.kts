@@ -1,9 +1,22 @@
+import java.util.Base64
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
+}
+
+val b64File = file("${rootDir}/debug.keystore.base64")
+val kFile = file("${rootDir}/debug.keystore")
+if (b64File.exists() && !kFile.exists()) {
+    try {
+        val bytes = Base64.getDecoder().decode(b64File.readText().trim())
+        kFile.writeBytes(bytes)
+    } catch (e: Exception) {
+        logger.error("Failed decoding base64 keystore: ", e)
+    }
 }
 
 android {
@@ -121,14 +134,45 @@ dependencies {
   "ksp"(libs.moshi.kotlin.codegen)
 }
 
-tasks.register<Copy>("copyApksToRoot") {
-    from(layout.buildDirectory.dir("outputs/apk/debug")) {
-        include("app-debug.apk")
+abstract class CopyApksTask : DefaultTask() {
+    @get:InputDirectory
+    abstract val buildDebugDir: org.gradle.api.file.DirectoryProperty
+
+    @get:InputDirectory
+    abstract val buildReleaseDir: org.gradle.api.file.DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val apksDirectory: org.gradle.api.file.DirectoryProperty
+
+    @get:Internal
+    abstract val rootDirectory: org.gradle.api.file.DirectoryProperty
+
+    @TaskAction
+    fun run() {
+        val debugApk = File(buildDebugDir.get().asFile, "app-debug.apk")
+        val releaseApk = File(buildReleaseDir.get().asFile, "app-release.apk")
+        
+        val apksDir = apksDirectory.get().asFile
+        if (!apksDir.exists()) {
+            apksDir.mkdirs()
+        }
+        val rootDir = rootDirectory.get().asFile
+
+        if (debugApk.exists()) {
+            debugApk.copyTo(File(apksDir, "app-debug.apk"), overwrite = true)
+            debugApk.copyTo(File(rootDir, "app-debug.apk"), overwrite = true)
+        }
+        if (releaseApk.exists()) {
+            releaseApk.copyTo(File(apksDir, "app-release.apk"), overwrite = true)
+        }
     }
-    from(layout.buildDirectory.dir("outputs/apk/release")) {
-        include("app-release.apk")
-    }
-    into(file("${rootDir}/apks"))
+}
+
+tasks.register<CopyApksTask>("copyApksToRoot") {
+    buildDebugDir.set(layout.buildDirectory.dir("outputs/apk/debug"))
+    buildReleaseDir.set(layout.buildDirectory.dir("outputs/apk/release"))
+    apksDirectory.set(layout.projectDirectory.dir("../apks"))
+    rootDirectory.set(layout.projectDirectory.dir("../"))
 }
 
 tasks.configureEach {

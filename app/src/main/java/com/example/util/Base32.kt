@@ -5,8 +5,10 @@ object Base32 {
     private val CHAR_MAP = ALPHABET.withIndex().associate { it.value to it.index }
 
     fun decode(base32: String): ByteArray {
-        // Clear padding and normalize
+        // Clear padding and normalize, mapping common typos like 0->O, 1->I for extreme user convenience
         val clean = base32.uppercase()
+            .replace("0", "O")
+            .replace("1", "I")
             .replace("=", "")
             .replace(Regex("[^A-Z2-7]"), "")
         
@@ -28,15 +30,16 @@ object Base32 {
                     result[index++] = (buffer shr (bitsLeft - 8)).toByte()
                 }
                 bitsLeft -= 8
+                buffer = buffer and ((1 shl bitsLeft) - 1)
             }
         }
         return result
     }
 
     fun isValidBase32(value: String): Boolean {
-        val clean = value.uppercase().replace("=", "").replace(Regex("[^A-Z2-7]"), "")
+        val clean = value.replace(Regex("\\s+"), "").replace("-", "").replace("0", "O").replace("1", "I").uppercase().trim()
         if (clean.isEmpty()) return false
-        // Base32 string length must be a multiple of 8 if padded, otherwise we check dynamic lengths
-        return clean.length == value.replace("=", "").replace(Regex("[^A-Z2-7]"), "").length
+        val regex = Regex("^[A-Z2-7]+=*$")
+        return regex.matches(clean)
     }
 }

@@ -54,7 +54,11 @@ class AuthenticatorViewModel(application: Application) : AndroidViewModel(applic
         _darkThemeType.value = type
         viewModelScope.launch {
             _statusMessage.emit(
-                if (type == 0) "تم تفعيل الوضع الليلي الأنيق" else "تم تفعيل الوضع الليلي الداكن جداً (AMOLED)"
+                when (type) {
+                    0 -> "تم تفعيل الوضع الليلي الأنيق"
+                    1 -> "تم تفعيل الوضع الليلي الداكن جداً (AMOLED)"
+                    else -> "تم تفعيل الوضع الفاتح المشرق"
+                }
             )
         }
     }
@@ -122,7 +126,7 @@ class AuthenticatorViewModel(application: Application) : AndroidViewModel(applic
             finalSecret = parsed.secret
             finalPeriod = parsed.period
         } else {
-            val cleanSecret = trimmed.replace(" ", "").replace("-", "")
+            val cleanSecret = trimmed.replace(Regex("\\s+"), "").replace("-", "")
             if (!Base32.isValidBase32(cleanSecret)) {
                 viewModelScope.launch {
                     _statusMessage.emit("رمز المفتاح سري غير صحيح! تأكد من أن الرمز بنسق Base32.")

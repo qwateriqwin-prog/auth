@@ -135,35 +135,70 @@ val CopyIcon: ImageVector
         }
     }.build()
 
-// Cozy theme color descriptors mapped to the Elegant Dark design theme
-var currentThemeActive = 0 // 0 = Elegant Dark, 1 = AMOLED Pure Black
+// Cozy theme color descriptors mapped to the design themes (0 = Elegant Dark, 1 = AMOLED Pure Black, 2 = Light Mode)
+var currentThemeActive = 0
 
 val CyberSlateBg: Color
-    get() = if (currentThemeActive == 1) Color(0xFF000000) else Color(0xFF1C1B1F)
+    get() = when (currentThemeActive) {
+        1 -> Color(0xFF000000)
+        2 -> Color(0xFFF4F6F9) // Cozy Light Blue-Grey Background
+        else -> Color(0xFF1C1B1F)
+    }
 
 val CyberCardSurface: Color
-    get() = if (currentThemeActive == 1) Color(0xFF121212) else Color(0xFF2B2930)
+    get() = when (currentThemeActive) {
+        1 -> Color(0xFF121212)
+        2 -> Color(0xFFFFFFFF) // Crisp Clean White Card
+        else -> Color(0xFF2B2930)
+    }
 
 val CyberPrimaryTeal: Color
-    get() = if (currentThemeActive == 1) Color(0xFFBB86FC) else Color(0xFFD0BCFF)
+    get() = when (currentThemeActive) {
+        1 -> Color(0xFFBB86FC)
+        2 -> Color(0xFF6200EE) // Solid Material Purple/Indigo for top-notch light contrast
+        else -> Color(0xFFD0BCFF)
+    }
 
 val CyberGold: Color
-    get() = Color(0xFFE57373)
+    get() = when (currentThemeActive) {
+        2 -> Color(0xFFB00020) // Deep red warning text for Light Mode
+        else -> Color(0xFFE57373)
+    }
 
 val LightSlateText: Color
-    get() = if (currentThemeActive == 1) Color(0xFFFFFFFF) else Color(0xFFE6E1E5)
+    get() = when (currentThemeActive) {
+        1 -> Color(0xFFFFFFFF)
+        2 -> Color(0xFF1C1B1F) // Deep Slate Charcoal for readability
+        else -> Color(0xFFE6E1E5)
+    }
 
 val SoftGreySub: Color
-    get() = if (currentThemeActive == 1) Color(0xFFB0B0B0) else Color(0xFFCAC4D0)
+    get() = when (currentThemeActive) {
+        1 -> Color(0xFFB0B0B0)
+        2 -> Color(0xFF5A5A5A) // High contrast medium-dark grey
+        else -> Color(0xFFCAC4D0)
+    }
 
 val DarkBorderColor: Color
-    get() = if (currentThemeActive == 1) Color(0xFF262626) else Color(0xFF49454F)
+    get() = when (currentThemeActive) {
+        1 -> Color(0xFF262626)
+        2 -> Color(0xFFE0E0E0) // Subtle borders
+        else -> Color(0xFF49454F)
+    }
 
 val SecureBannerBg: Color
-    get() = if (currentThemeActive == 1) Color(0xFF1C1B1F) else Color(0xFF332D41)
+    get() = when (currentThemeActive) {
+        1 -> Color(0xFF1C1B1F)
+        2 -> Color(0xFFEADDFF) // Beautiful modern soft lavender
+        else -> Color(0xFF332D41)
+    }
 
 val TextOnPrimary: Color
-    get() = if (currentThemeActive == 1) Color(0xFF121212) else Color(0xFF381E72)
+    get() = when (currentThemeActive) {
+        1 -> Color(0xFF121212)
+        2 -> Color(0xFFFFFFFF) // High contrast pure white text
+        else -> Color(0xFF381E72)
+    }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,6 +215,7 @@ fun AuthenticatorAppContent(viewModel: AuthenticatorViewModel) {
     var showAddDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var showSplashScreen by remember { mutableStateOf(true) }
 
     // Listener for viewmodel toast/status messages
     LaunchedEffect(Unit) {
@@ -195,7 +231,9 @@ fun AuthenticatorAppContent(viewModel: AuthenticatorViewModel) {
             color = CyberSlateBg
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                if (isLocked) {
+                if (showSplashScreen) {
+                    SplashScreenView(onFinish = { showSplashScreen = false })
+                } else if (isLocked) {
                     LockScreenView(
                         isPinSet = isPinSet,
                         onPinEntered = { pin ->
@@ -381,6 +419,7 @@ fun AuthenticatorAppContent(viewModel: AuthenticatorViewModel) {
 
                     if (showAddDialog) {
                         AddAccountDialog(
+                            currentTimeSeconds = timeSeconds,
                             onDismiss = { showAddDialog = false },
                             onConfirm = { label, issuer, secret ->
                                 val ok = viewModel.addAccount(label, issuer, secret)
@@ -622,6 +661,29 @@ fun AuthenticatorCard(
                         )
                     }
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth(0.95f)
+                ) {
+                    androidx.compose.material3.LinearProgressIndicator(
+                        progress = { fractionRemaining },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = if (secondsRemaining <= 5) CyberGold else CyberPrimaryTeal,
+                        trackColor = Color.White.copy(0.12f)
+                    )
+                    Text(
+                        text = "$secondsRemaining ثانية",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (secondsRemaining <= 5) CyberGold else SoftGreySub
+                    )
+                }
             }
 
             // Visual Timer + Action controls
@@ -782,6 +844,7 @@ private fun getBrandColor(issuer: String): Color {
 
 @Composable
 fun AddAccountDialog(
+    currentTimeSeconds: Long,
     onDismiss: () -> Unit,
     onConfirm: (label: String, issuer: String, secret: String) -> Unit
 ) {
@@ -791,6 +854,30 @@ fun AddAccountDialog(
     var inputLabel by remember { mutableStateOf("") }
     var inputIssuer by remember { mutableStateOf("") }
     var inputSecret by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val clipboard = remember { context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager }
+    var clipboardContent by remember { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        try {
+            val clip = clipboard.primaryClip
+            if (clip != null && clip.itemCount > 0) {
+                val text = clip.getItemAt(0).text?.toString()?.trim() ?: ""
+                if (text.isNotEmpty()) {
+                    clipboardContent = text
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore clipboard errors gracefully
+        }
+    }
+
+    val isClipUri = clipboardContent.startsWith("otpauth://", ignoreCase = true)
+    val isClipBase32 = remember(clipboardContent) {
+        val clean = clipboardContent.replace(" ", "").replace("-", "")
+        clean.isNotEmpty() && com.example.util.Base32.isValidBase32(clean) && !isClipUri
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -806,8 +893,62 @@ fun AddAccountDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Clipboard detection notification banner
+                if (clipboardContent.isNotEmpty() && (isClipUri || isClipBase32)) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = CyberPrimaryTeal.copy(0.12f)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "تم العثور على مفتاح في الحافظة!",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CyberPrimaryTeal
+                                )
+                                Text(
+                                    text = if (isClipUri) "رابط إعداد OTP كامل" else "مفتاح سري (Base32)",
+                                    fontSize = 10.sp,
+                                    color = SoftGreySub
+                                )
+                            }
+                            
+                            Button(
+                                onClick = {
+                                    if (isClipUri) {
+                                        tabSelected = 0
+                                        inputUri = clipboardContent
+                                    } else {
+                                        tabSelected = 1
+                                        inputSecret = clipboardContent
+                                        inputIssuer = "حساب مستورد"
+                                        inputLabel = "مستورد من الحافظة"
+                                    }
+                                    clipboardContent = "" // clear banner
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = CyberPrimaryTeal),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp),
+                                modifier = Modifier.height(28.dp),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Text("تعبئة تلقائية", fontSize = 10.sp, color = CyberSlateBg, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
                 // Interactive Tab Picker
                 Row(
                     modifier = Modifier
@@ -865,18 +1006,145 @@ fun AddAccountDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("uri_input_field"),
-                            maxLines = 4,
+                            maxLines = 3,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = LightSlateText,
                                 unfocusedTextColor = LightSlateText
                             )
                         )
-                        Text(
-                            "هذا الخيار مثالي إذا قمت بنسخ رابط الإعداد المباشر الموفر من Google/Gmail عند تفعيل الميزة.",
-                            fontSize = 10.sp,
-                            color = SoftGreySub,
-                            lineHeight = 14.sp
-                        )
+                        
+                        // Parse URI and display live preview if valid
+                        val parsedUri = remember(inputUri) { TotpHelper.parseOtpAuthUri(inputUri.trim()) }
+                        val rawBase32FromUri = remember(inputUri) {
+                            val clean = inputUri.replace(" ", "").replace("-", "").trim()
+                            if (com.example.util.Base32.isValidBase32(clean)) clean else null
+                        }
+
+                        if (parsedUri != null) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = CyberPrimaryTeal.copy(0.12f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(imageVector = Icons.Default.Check, contentDescription = "Valid", tint = CyberPrimaryTeal, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("رابط مصادقة صالح!", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = CyberPrimaryTeal)
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("الخدمة: ${parsedUri.issuer}", color = LightSlateText, fontSize = 11.sp)
+                                    Text("الحساب: ${parsedUri.label}", color = LightSlateText, fontSize = 11.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    
+                                    val liveOtp = remember(parsedUri, currentTimeSeconds) {
+                                        TotpHelper.generateTotp(parsedUri.secret, currentTimeSeconds, parsedUri.period)
+                                    }
+                                    val formattedLiveOtp = if (liveOtp.length == 6) "${liveOtp.take(3)}   ${liveOtp.drop(3)}" else liveOtp
+                                    
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column {
+                                            Text("رمز المصادقة المؤقت للنسخ:", fontSize = 10.sp, color = SoftGreySub)
+                                            Text(
+                                                text = formattedLiveOtp,
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CyberPrimaryTeal,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                        
+                                        Button(
+                                            onClick = {
+                                                val clipMgr = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                val clip = ClipData.newPlainText("2FA Code", liveOtp)
+                                                clipMgr.setPrimaryClip(clip)
+                                                Toast.makeText(context, "تم نسخ الرمز $liveOtp", Toast.LENGTH_SHORT).show()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = CyberPrimaryTeal),
+                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp),
+                                            modifier = Modifier.height(32.dp),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Text("نسخ سريع", fontSize = 11.sp, color = CyberSlateBg, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (rawBase32FromUri != null) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = CyberPrimaryTeal.copy(0.12f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(imageVector = Icons.Default.Check, contentDescription = "Valid", tint = CyberPrimaryTeal, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("مفتاح سري صالح (Base32 Key)!", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = CyberPrimaryTeal)
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text("ملاحظة: لقد أدخلت مفتاحاً سرياً وخلقنا الرمز له مباشرة.", color = SoftGreySub, fontSize = 10.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    
+                                    val liveOtp = remember(rawBase32FromUri, currentTimeSeconds) {
+                                        TotpHelper.generateTotp(rawBase32FromUri, currentTimeSeconds, 30)
+                                    }
+                                    val formattedLiveOtp = if (liveOtp.length == 6) "${liveOtp.take(3)}   ${liveOtp.drop(3)}" else liveOtp
+                                    
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column {
+                                            Text("رمز المصادقة لكود الحساب:", fontSize = 10.sp, color = SoftGreySub)
+                                            Text(
+                                                text = formattedLiveOtp,
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CyberPrimaryTeal,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                        
+                                        Button(
+                                            onClick = {
+                                                val clipMgr = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                val clip = ClipData.newPlainText("2FA Code", liveOtp)
+                                                clipMgr.setPrimaryClip(clip)
+                                                Toast.makeText(context, "تم نسخ الرمز $liveOtp", Toast.LENGTH_SHORT).show()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = CyberPrimaryTeal),
+                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp),
+                                            modifier = Modifier.height(32.dp),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Text("نسخ سريع", fontSize = 11.sp, color = CyberSlateBg, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (inputUri.isNotEmpty()) {
+                            Text(
+                                "تنبيه: الرابط المدخل ليس رمز otpauth صالحاً وليس مفتاح Base32 صحيحاً.",
+                                color = CyberGold,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        } else {
+                            Text(
+                                "هذا الخيار مثالي إذا قمت بنسخ رابط الإعداد المباشر الموفر من حسابك عند تفعيل الميزة.",
+                                fontSize = 10.sp,
+                                color = SoftGreySub,
+                                lineHeight = 14.sp
+                            )
+                        }
                     }
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -922,12 +1190,95 @@ fun AddAccountDialog(
                             singleLine = true
                         )
 
-                        Text(
-                            "المفتاح السري هو الرمز المكون من حروف وأرقام (مثل JBSW...3P) الممنوح من لوحة أمان الجيميل.",
-                            fontSize = 10.sp,
-                            color = SoftGreySub,
-                            lineHeight = 14.sp
-                        )
+                        TextButton(
+                            onClick = {
+                                inputIssuer = "Google"
+                                inputLabel = "zozmmnosh@gmail.com"
+                                inputSecret = "6ccp tock cj7r qrb2 i4so dj2c 6zfr cqie"
+                            },
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                        ) {
+                            Text(
+                                "💡 اضغط هنا لتعبئة بريدك الإلكتروني ومفتاحك التجريبي تلقائياً",
+                                fontSize = 11.sp,
+                                color = CyberPrimaryTeal,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        val cleanSecret = inputSecret.replace(" ", "").replace("-", "")
+                        val isSecretValid = remember(cleanSecret) {
+                            cleanSecret.isNotEmpty() && com.example.util.Base32.isValidBase32(cleanSecret)
+                        }
+
+                        if (isSecretValid) {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = CyberPrimaryTeal.copy(0.12f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(imageVector = Icons.Default.Check, contentDescription = "Valid", tint = CyberPrimaryTeal, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("المفتاح السري صالح وجاهز!", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = CyberPrimaryTeal)
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    
+                                    val liveOtp = remember(cleanSecret, currentTimeSeconds) {
+                                        TotpHelper.generateTotp(cleanSecret, currentTimeSeconds, 30)
+                                    }
+                                    val formattedLiveOtp = if (liveOtp.length == 6) "${liveOtp.take(3)}   ${liveOtp.drop(3)}" else liveOtp
+                                    
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column {
+                                            Text("رمز المصادقة المولد من هذا المفتاح:", fontSize = 10.sp, color = SoftGreySub)
+                                            Text(
+                                                text = formattedLiveOtp,
+                                                fontSize = 22.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = CyberPrimaryTeal,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                        
+                                        Button(
+                                            onClick = {
+                                                val clipMgr = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                val clip = ClipData.newPlainText("2FA Code", liveOtp)
+                                                clipMgr.setPrimaryClip(clip)
+                                                Toast.makeText(context, "تم نسخ الرمز $liveOtp", Toast.LENGTH_SHORT).show()
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = CyberPrimaryTeal),
+                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp),
+                                            modifier = Modifier.height(32.dp),
+                                            shape = RoundedCornerShape(8.dp)
+                                        ) {
+                                            Text("نسخ سريع", fontSize = 11.sp, color = CyberSlateBg, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (inputSecret.isNotEmpty()) {
+                            Text(
+                                text = "تنبيه: الرمز السري المدخل غير صالح كـ Base32. تأكد من إزالة الأحرف الخاطئة.",
+                                color = CyberGold,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        } else {
+                            Text(
+                                "المفتاح السري هو الرمز المكون من حروف وأرقام (مثل JBSW...3P) الممنوح من الخدمة التي تود تأمينها.",
+                                fontSize = 10.sp,
+                                color = SoftGreySub,
+                                lineHeight = 14.sp
+                            )
+                        }
                     }
                 }
             }
@@ -1008,11 +1359,11 @@ fun SettingsDialogContent(
 
                 HorizontalDivider(color = Color.White.copy(0.1f))
 
-                // Dark Mode Selection Options for eye protection
+                // Theme Selection Options
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("نمط المظهر الليلي (Dark Mode)", fontWeight = FontWeight.Bold, color = LightSlateText, fontSize = 14.sp)
+                    Text("نمط مظهر التطبيق (Theme Mode)", fontWeight = FontWeight.Bold, color = LightSlateText, fontSize = 14.sp)
                     Text(
-                        "اختر السمة التي توفر أفضل راحة لعينيك وتقلل إجهاد العين في البيئات المظلمة.",
+                        "اختر المظهر الذي يوفر أفضل راحة لعينك ويسهل عليك إدارة حساباتك في مختلف البيئات.",
                         color = SoftGreySub,
                         fontSize = 11.sp,
                         lineHeight = 15.sp
@@ -1021,7 +1372,7 @@ fun SettingsDialogContent(
                     val activeTheme by viewModel.darkThemeType.collectAsState()
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         // Elegant Dark Card Option
                         Box(
@@ -1029,15 +1380,15 @@ fun SettingsDialogContent(
                                 .weight(1f)
                                 .background(
                                     if (activeTheme == 0) CyberPrimaryTeal.copy(0.15f) else Color.White.copy(0.04f),
-                                    RoundedCornerShape(12.dp)
+                                    RoundedCornerShape(10.dp)
                                 )
                                 .border(
                                     1.dp,
                                     if (activeTheme == 0) CyberPrimaryTeal else Color.Transparent,
-                                    RoundedCornerShape(12.dp)
+                                    RoundedCornerShape(10.dp)
                                 )
                                 .clickable { viewModel.updateDarkThemeType(0) }
-                                .padding(12.dp),
+                                .padding(8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1045,37 +1396,68 @@ fun SettingsDialogContent(
                                     "الليلي الأنيق",
                                     color = if (activeTheme == 0) CyberPrimaryTeal else LightSlateText,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
+                                    fontSize = 11.sp,
+                                    textAlign = TextAlign.Center
                                 )
-                                Text("رمادي للراحة هادئ", color = SoftGreySub, fontSize = 10.sp)
+                                Text("رمادي للراحة", color = SoftGreySub, fontSize = 9.sp)
                             }
                         }
 
                         // AMOLED Black Card Option
                         Box(
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(1.1f)
                                 .background(
                                     if (activeTheme == 1) CyberPrimaryTeal.copy(0.15f) else Color.White.copy(0.04f),
-                                    RoundedCornerShape(12.dp)
+                                    RoundedCornerShape(10.dp)
                                 )
                                 .border(
                                     1.dp,
                                     if (activeTheme == 1) CyberPrimaryTeal else Color.Transparent,
-                                    RoundedCornerShape(12.dp)
+                                    RoundedCornerShape(10.dp)
                                 )
                                 .clickable { viewModel.updateDarkThemeType(1) }
-                                .padding(12.dp),
+                                .padding(8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    "الليلي الداكن (AMOLED)",
+                                    "الليلي AMOLED",
                                     color = if (activeTheme == 1) CyberPrimaryTeal else LightSlateText,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
+                                    fontSize = 11.sp,
+                                    textAlign = TextAlign.Center
                                 )
-                                Text("توفير طاقة فائق", color = SoftGreySub, fontSize = 10.sp)
+                                Text("توفير طاقة فائق", color = SoftGreySub, fontSize = 9.sp)
+                            }
+                        }
+
+                        // Light Theme Option
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(
+                                    if (activeTheme == 2) CyberPrimaryTeal.copy(0.15f) else Color.White.copy(0.04f),
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (activeTheme == 2) CyberPrimaryTeal else Color.Transparent,
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .clickable { viewModel.updateDarkThemeType(2) }
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "الوضع الفاتح",
+                                    color = if (activeTheme == 2) CyberPrimaryTeal else LightSlateText,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                                Text("مظهر ناصع", color = SoftGreySub, fontSize = 9.sp)
                             }
                         }
                     }
