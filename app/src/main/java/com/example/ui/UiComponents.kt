@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -135,19 +136,41 @@ val CopyIcon: ImageVector
     }.build()
 
 // Cozy theme color descriptors mapped to the Elegant Dark design theme
-val CyberSlateBg = Color(0xFF1C1B1F)
-val CyberCardSurface = Color(0xFF2B2930)
-val CyberPrimaryTeal = Color(0xFFD0BCFF)
-val CyberGold = Color(0xFFE57373)
-val LightSlateText = Color(0xFFE6E1E5)
-val SoftGreySub = Color(0xFFCAC4D0)
-val DarkBorderColor = Color(0xFF49454F)
-val SecureBannerBg = Color(0xFF332D41)
-val TextOnPrimary = Color(0xFF381E72)
+var currentThemeActive = 0 // 0 = Elegant Dark, 1 = AMOLED Pure Black
+
+val CyberSlateBg: Color
+    get() = if (currentThemeActive == 1) Color(0xFF000000) else Color(0xFF1C1B1F)
+
+val CyberCardSurface: Color
+    get() = if (currentThemeActive == 1) Color(0xFF121212) else Color(0xFF2B2930)
+
+val CyberPrimaryTeal: Color
+    get() = if (currentThemeActive == 1) Color(0xFFBB86FC) else Color(0xFFD0BCFF)
+
+val CyberGold: Color
+    get() = Color(0xFFE57373)
+
+val LightSlateText: Color
+    get() = if (currentThemeActive == 1) Color(0xFFFFFFFF) else Color(0xFFE6E1E5)
+
+val SoftGreySub: Color
+    get() = if (currentThemeActive == 1) Color(0xFFB0B0B0) else Color(0xFFCAC4D0)
+
+val DarkBorderColor: Color
+    get() = if (currentThemeActive == 1) Color(0xFF262626) else Color(0xFF49454F)
+
+val SecureBannerBg: Color
+    get() = if (currentThemeActive == 1) Color(0xFF1C1B1F) else Color(0xFF332D41)
+
+val TextOnPrimary: Color
+    get() = if (currentThemeActive == 1) Color(0xFF121212) else Color(0xFF381E72)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthenticatorAppContent(viewModel: AuthenticatorViewModel) {
+    val themeType by viewModel.darkThemeType.collectAsState()
+    currentThemeActive = themeType
+
     val context = LocalContext.current
     val isLocked by viewModel.isLocked.collectAsState()
     val isPinSet by viewModel.isPinSet.collectAsState()
@@ -981,6 +1004,81 @@ fun SettingsDialogContent(
                         ),
                         modifier = Modifier.testTag("app_lock_switch")
                     )
+                }
+
+                HorizontalDivider(color = Color.White.copy(0.1f))
+
+                // Dark Mode Selection Options for eye protection
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("نمط المظهر الليلي (Dark Mode)", fontWeight = FontWeight.Bold, color = LightSlateText, fontSize = 14.sp)
+                    Text(
+                        "اختر السمة التي توفر أفضل راحة لعينيك وتقلل إجهاد العين في البيئات المظلمة.",
+                        color = SoftGreySub,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp
+                    )
+                    
+                    val activeTheme by viewModel.darkThemeType.collectAsState()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Elegant Dark Card Option
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(
+                                    if (activeTheme == 0) CyberPrimaryTeal.copy(0.15f) else Color.White.copy(0.04f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (activeTheme == 0) CyberPrimaryTeal else Color.Transparent,
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable { viewModel.updateDarkThemeType(0) }
+                                .padding(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "الليلي الأنيق",
+                                    color = if (activeTheme == 0) CyberPrimaryTeal else LightSlateText,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                                Text("رمادي للراحة هادئ", color = SoftGreySub, fontSize = 10.sp)
+                            }
+                        }
+
+                        // AMOLED Black Card Option
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(
+                                    if (activeTheme == 1) CyberPrimaryTeal.copy(0.15f) else Color.White.copy(0.04f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (activeTheme == 1) CyberPrimaryTeal else Color.Transparent,
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable { viewModel.updateDarkThemeType(1) }
+                                .padding(12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "الليلي الداكن (AMOLED)",
+                                    color = if (activeTheme == 1) CyberPrimaryTeal else LightSlateText,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                                Text("توفير طاقة فائق", color = SoftGreySub, fontSize = 10.sp)
+                            }
+                        }
+                    }
                 }
 
                 HorizontalDivider(color = Color.White.copy(0.1f))

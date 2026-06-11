@@ -120,3 +120,23 @@ dependencies {
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
 }
+
+tasks.register<Copy>("copyApksToRoot") {
+    from(layout.buildDirectory.dir("outputs/apk/debug")) {
+        include("app-debug.apk")
+    }
+    from(layout.buildDirectory.dir("outputs/apk/release")) {
+        include("app-release.apk")
+    }
+    into(file("${rootDir}/apks"))
+}
+
+tasks.configureEach {
+    if (name == "assembleDebug" || name == "assembleRelease") {
+        finalizedBy("copyApksToRoot")
+    }
+}
+
+
+
+

@@ -45,6 +45,20 @@ class AuthenticatorViewModel(application: Application) : AndroidViewModel(applic
     private val _isPinSet = MutableStateFlow(!securityPrefs.getPinHash().isNullOrEmpty())
     val isPinSet: StateFlow<Boolean> = _isPinSet.asStateFlow()
 
+    // Dark theme type (0 = Elegant Dark, 1 = AMOLED Pure Black)
+    private val _darkThemeType = MutableStateFlow(securityPrefs.getDarkThemeType())
+    val darkThemeType: StateFlow<Int> = _darkThemeType.asStateFlow()
+
+    fun updateDarkThemeType(type: Int) {
+        securityPrefs.setDarkThemeType(type)
+        _darkThemeType.value = type
+        viewModelScope.launch {
+            _statusMessage.emit(
+                if (type == 0) "تم تفعيل الوضع الليلي الأنيق" else "تم تفعيل الوضع الليلي الداكن جداً (AMOLED)"
+            )
+        }
+    }
+
     // Shared Flow for snackbar notifications
     private val _statusMessage = MutableSharedFlow<String>()
     val statusMessage: SharedFlow<String> = _statusMessage.asSharedFlow()

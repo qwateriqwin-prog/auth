@@ -9,6 +9,15 @@ class SecurityPreferences(context: Context) {
     companion object {
         private const val KEY_PIN_HASH = "secured_pin_hash"
         private const val KEY_IS_LOCKED_ENABLED = "secured_lock_enabled"
+        private const val KEY_DARK_THEME_TYPE = "dark_theme_type"
+    }
+
+    fun getDarkThemeType(): Int {
+        return prefs.getInt(KEY_DARK_THEME_TYPE, 0) // 0 = Elegant Dark, 1 = AMOLED Pure Black
+    }
+
+    fun setDarkThemeType(type: Int) {
+        prefs.edit().putInt(KEY_DARK_THEME_TYPE, type).apply()
     }
 
     fun isAppLockEnabled(): Boolean {
